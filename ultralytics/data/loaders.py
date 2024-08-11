@@ -419,10 +419,11 @@ class LoadPilAndNumpy:
         """Validate and format an image to numpy array."""
         assert isinstance(im, (Image.Image, np.ndarray)), f"Expected PIL/np.ndarray image type, but got {type(im)}"
         if isinstance(im, Image.Image):
-            if im.mode != "RGB":
-                im = im.convert("RGB")
+            if im.mode != "L":
+                im = im.convert("L")
+            im = np.expand_dims(im, axis=-1)
             im = np.asarray(im)[:, :, ::-1]
-            im = np.ascontiguousarray(im)  # contiguous
+            im = np.ascontiguousarray(im.copy())  # contiguous
         return im
 
     def __len__(self):

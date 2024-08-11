@@ -124,7 +124,7 @@ class BasePredictor:
             im = np.stack(self.pre_transform(im))
             im = im[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW, (n, 3, h, w)
             im = np.ascontiguousarray(im)  # contiguous
-            im = torch.from_numpy(im)
+            im = torch.from_numpy(im.copy())
 
         im = im.to(self.device)
         im = im.half() if self.model.fp16 else im.float()  # uint8 to fp16/32
@@ -151,9 +151,11 @@ class BasePredictor:
         Returns:
             (list): A list of transformed images.
         """
-        same_shapes = len({x.shape for x in im}) == 1
+        same_shapes = all(x.shape == im[0].shape for x in im)  #same_shapes = len({x.shape for x in im}) == 1
         letterbox = LetterBox(self.imgsz, auto=same_shapes and self.model.pt, stride=self.model.stride)
-        return [letterbox(image=x) for x in im]
+        im = [letterbox(image=x) for x in im]
+        im = [np.expand_dims(cv2.cvtColor(x, cv2.COLOR_BGR2GRAY) if len(x.shape) == 3 else x, axis=-1) for x in im]
+        return im
 
     def postprocess(self, preds, img, orig_imgs):
         """Post-processes predictions for an image and returns them."""
@@ -231,7 +233,7 @@ class BasePredictor:
 
             # Warmup model
             if not self.done_warmup:
-                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, 3, *self.imgsz))
+                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, 1, *self.imgsz))
                 self.done_warmup = True
 
             self.seen, self.windows, self.batch = 0, [], None

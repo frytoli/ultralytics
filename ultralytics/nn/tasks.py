@@ -385,9 +385,9 @@ class DetectionModel(BaseModel):
 class OBBModel(DetectionModel):
     """YOLOv8 Oriented Bounding Box (OBB) model."""
 
-    def __init__(self, cfg="yolov8n-obb.yaml", ch=3, nc=None, verbose=True):
+    def __init__(self, cfg="yolov8n-obb.yaml", ch=1, nc=None, verbose=True):
         """Initialize YOLOv8 OBB model with given config and parameters."""
-        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        super().__init__(cfg=cfg, ch=1, nc=nc, verbose=verbose)
 
     def init_criterion(self):
         """Initialize the loss criterion for the model."""
@@ -855,6 +855,14 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     ckpt, weight = torch_safe_load(weight)  # load ckpt
     args = {**DEFAULT_CFG_DICT, **(ckpt.get("train_args", {}))}  # combine model and default args, preferring model args
     model = (ckpt.get("ema") or ckpt["model"]).to(device).float()  # FP32 model
+
+    # 3 to 1 channel
+    def squeeze_weights(m):
+        m.weight.data = m.weight.data.sum(dim=1)[:, None]
+        m.in_channels = 1
+
+    if model.model[0].conv.in_channels > 1:
+        model.model[0].conv.apply(squeeze_weights)
 
     # Model compatibility updates
     model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}  # attach args to model

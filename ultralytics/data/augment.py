@@ -2082,11 +2082,11 @@ class Format:
             >>> print(formatted_img.shape)
             torch.Size([3, 100, 100])
         """
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         if len(img.shape) < 3:
             img = np.expand_dims(img, -1)
-        img = img.transpose(2, 0, 1)
-        img = np.ascontiguousarray(img[::-1] if random.uniform(0, 1) > self.bgr else img)
-        img = torch.from_numpy(img)
+        img = np.ascontiguousarray(img.transpose(2, 0, 1)[::-1])
+        img = torch.from_numpy(img.copy())
         return img
 
     def _format_segments(self, instances, cls, w, h):
